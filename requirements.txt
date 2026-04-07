@@ -1,0 +1,30 @@
+# ── Web Framework ─────────────────────────────────────────────────────────────
+reflex>=0.6.0
+
+# ── AI / LLM ──────────────────────────────────────────────────────────────────
+openai>=1.0.0          # OpenAI client (also used for Groq + Ollama compatible API)
+
+# ── Static Code Analysis ──────────────────────────────────────────────────────
+pyflakes>=3.2.0        # Error & bug detection
+pycodestyle>=2.11.0    # PEP 8 style checking
+radon>=6.0.0           # Cyclomatic complexity + maintainability index
+bandit>=1.7.0          # Security vulnerability scanning (OWASP)
+
+# ── RAG / Vector Search ───────────────────────────────────────────────────────
+chromadb>=0.5.0        # Vector database for semantic code search
+rank-bm25>=0.2.2       # BM25 keyword search fallback
+
+# ── Control Flow Graph ────────────────────────────────────────────────────────
+networkx>=3.3.0        # Graph data structures
+matplotlib>=3.8.0      # Graph rendering / visualization
+
+# ── GitHub Integration ────────────────────────────────────────────────────────
+PyGithub>=2.0.0        # GitHub API client
+
+# ── Database ──────────────────────────────────────────────────────────────────
+sqlmodel>=0.0.19       # ORM (used by Reflex state persistence)
+alembic>=1.13.0        # Database migrations
+psycopg2-binary>=2.9.9 # PostgreSQL adapter (for production DB)
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0   # .env file loader
