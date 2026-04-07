@@ -4,7 +4,7 @@ An intelligent, AI-powered code review platform for students, developers, and ed
 
 > **Phase 1:** Currently supports **Python** and several popular languages. Support for additional languages is actively in development and coming soon!
 
-🌐 **Live Demo:** [https://ai-code-reviewer-red-orca.reflex.run](https://ai-code-reviewer-red-orca.reflex.run)
+🌐 **Live Demo:** [https://codementor-silver-apple.reflex.run/](https://codementor-silver-apple.reflex.run/)
 
 ---
 
