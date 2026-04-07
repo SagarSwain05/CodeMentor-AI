@@ -142,7 +142,7 @@ The platform uses a **3-tier AI priority system**:
 
 ## Deployment
 
-Deployed on **Reflex Cloud** — [https://ai-code-reviewer-red-orca.reflex.run](https://ai-code-reviewer-red-orca.reflex.run)
+Deployed on **Reflex Cloud** —  [https://codementor-silver-apple.reflex.run/](https://codementor-silver-apple.reflex.run/)
 
 Backend: `https://be6df7dd-6c4d-4bb1-a59e-85c2dd171c63.fly.dev`
 
