@@ -45,6 +45,10 @@ _REPO_STORE_BUDGET = 4_000_000  # characters
 _SCAN_CONCURRENCY = 4
 
 
+# Headings the AI service uses when no provider could answer
+_AI_FAILURE_PREFIXES = ("## No AI provider", "## AI providers unavailable")
+
+
 def _score_color(score: int) -> str:
     return "green" if score >= 80 else ("yellow" if score >= 50 else "red")
 
@@ -160,6 +164,18 @@ class State(rx.State):
     @rx.var
     def has_optimized_code(self) -> bool:
         return self.ai_optimized_code != ""
+
+    @rx.var
+    def ai_needs_key(self) -> bool:
+        """The last AI review failed for lack of a working provider → offer an inline key box."""
+        return self.ai_optimizations.startswith(_AI_FAILURE_PREFIXES)
+
+    @rx.var
+    def chat_needs_key(self) -> bool:
+        if not self.chat_messages:
+            return False
+        last = self.chat_messages[-1]
+        return last.get("role") == "assistant" and str(last.get("content", "")).startswith(_AI_FAILURE_PREFIXES)
 
     # ─── Panel sizing ────────────────────────────────────────────────────────
 
@@ -565,7 +581,7 @@ class State(rx.State):
             self._notify("Please enter an API key.", "error")
             return
         if not provider:
-            self._notify("Unrecognized key — expected Groq (gsk_…), Gemini (AIza…) or OpenAI (sk-…).", "error")
+            self._notify("Unrecognized key — expected Groq (gsk_…), Gemini (AIza… / AQ.…) or OpenAI (sk-…).", "error")
             return
         self._session_keys = {**self._session_keys, provider: key}
         self.api_key_saved = True
@@ -573,6 +589,24 @@ class State(rx.State):
         self.gemini_api_key_input = ""
         self._notify(f"{self.api_key_provider} key saved for this session.", "success")
         return State.refresh_ollama_status
+
+    def save_api_key_and_retry_analysis(self):
+        """Inline key box in the AI tab: store the key, then re-run the analysis with it."""
+        result = self.save_api_key()
+        if self.api_key_saved and self._session_keys:
+            return State.analyze_code
+        return result
+
+    def save_api_key_and_retry_chat(self):
+        """Inline key box in the chat: store the key, then re-ask the last question."""
+        self.save_api_key()
+        if not (self.api_key_saved and self._session_keys):
+            return
+        users = [m for m in self.chat_messages if m.get("role") == "user"]
+        if users:
+            self.chat_input = users[-1]["content"]
+            self.chat_messages = self.chat_messages[:-2] if len(self.chat_messages) >= 2 else []
+            return State.send_chat_message
 
     def clear_api_keys(self):
         self._session_keys = {}

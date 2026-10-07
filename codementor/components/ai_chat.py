@@ -3,6 +3,7 @@
 import reflex as rx
 from codementor.state import State
 from codementor.components.theme import COLORS, CHAT_BUBBLE_USER, CHAT_BUBBLE_AI
+from codementor.components.ai_key_prompt import ai_key_prompt
 
 
 def chat_message(msg: dict) -> rx.Component:
@@ -226,6 +227,11 @@ def ai_chat_panel() -> rx.Component:
                         rx.box(),
                     ),
                     rx.foreach(State.chat_messages, chat_message),
+                    rx.cond(
+                        State.chat_needs_key,
+                        ai_key_prompt(State.save_api_key_and_retry_chat, "Save key & ask again"),
+                        rx.box(),
+                    ),
                     typing_indicator(),
                     id="chat-scroll-box",
                     class_name="chat-messages",

@@ -110,7 +110,7 @@ def detect_key_provider(key: str) -> str:
     key = key.strip()
     if key.startswith("gsk_"):
         return "groq"
-    if key.startswith("AIza"):
+    if key.startswith(("AIza", "AQ.")):  # classic and newer Google AI Studio key formats
         return "gemini"
     if key.startswith("sk-"):
         return "openai"
@@ -139,10 +139,15 @@ def providers(keys: dict | None = None) -> list[Provider]:
     if _ollama_running():
         out.append(Provider("ollama", os.environ.get("OLLAMA_MODEL", OLLAMA_MODEL),
                             f"{_ollama_base()}/v1", "ollama", "server"))
+    # Server keys: each env var may hold several comma-separated keys. They are
+    # interleaved per model so a rate-limited key fails over to the next key first.
     for backend, env in (("groq", "GROQ_API_KEY"), ("gemini", "GEMINI_API_KEY"), ("openai", "OPENAI_API_KEY")):
-        k = os.environ.get(env, "")
-        if k and not (keys or {}).get(backend):
-            out += _providers_for(backend, k, "server")
+        server_keys = [k.strip() for k in os.environ.get(env, "").split(",") if k.strip()]
+        if not server_keys or (keys or {}).get(backend):
+            continue
+        per_key = [_providers_for(backend, k, "server") for k in server_keys]
+        for tier in range(max(len(p) for p in per_key)):
+            out += [p[tier] for p in per_key if tier < len(p)]
     return out
 
 
@@ -194,12 +199,13 @@ async def _complete(messages: list[dict], keys: dict | None, *, temperature: flo
     if not cands:
         raise AIUnavailable(_no_client_message())
     errors: list[str] = []
-    tried: set[tuple[str, str]] = set()
+    tried: set[tuple[str, str, str]] = set()
     for p in cands:
         p.model = _effective_model(p)
-        if (p.backend, p.model) in tried:
+        key_id = p.api_key[-6:]
+        if (p.backend, p.model, key_id) in tried:
             continue
-        tried.add((p.backend, p.model))
+        tried.add((p.backend, p.model, key_id))
         use_json = json_mode and p.backend in ("groq", "openai", "gemini")
         simple = False          # True → retry without optional params (JSON mode, reasoning effort)
         rediscovered = False
@@ -239,9 +245,9 @@ async def _complete(messages: list[dict], keys: dict | None, *, temperature: flo
             except NotFoundError:
                 new_model = "" if rediscovered else await _discover_model(p)
                 rediscovered = True
-                if new_model and new_model != p.model and (p.backend, new_model) not in tried:
+                if new_model and new_model != p.model and (p.backend, new_model, key_id) not in tried:
                     p.model = new_model
-                    tried.add((p.backend, new_model))
+                    tried.add((p.backend, new_model, key_id))
                     continue  # retry with a model the provider actually serves
                 errors.append(f"{p.label}: model not available")
                 break
@@ -659,7 +665,7 @@ def _no_client_message() -> str:
         "Static analysis (errors, style, security, complexity, CFG) works without AI.\n"
         "To enable AI reviews, chat and optimized code, add **any one** key in **Settings**:\n\n"
         "- **Groq** (free) — [console.groq.com](https://console.groq.com) → key starts with `gsk_`\n"
-        "- **Google Gemini** (free tier) — [aistudio.google.com](https://aistudio.google.com/app/apikey) → `AIza…`\n"
+        "- **Google Gemini** (free tier) — [aistudio.google.com](https://aistudio.google.com/app/apikey) → `AIza…` or `AQ.…`\n"
         "- **OpenAI** — [platform.openai.com](https://platform.openai.com/api-keys) → `sk-…`\n"
         "- Or run **Ollama** locally: `ollama serve` + `ollama pull qwen2.5-coder:7b`"
     )

@@ -20,8 +20,8 @@ An intelligent, AI-powered code review platform for students, developers, and ed
 | **AI Review & Optimization** | Line-level findings, Big-O analysis, before/after suggestions, and one-click **Apply optimized code** |
 | **GitHub Repo Scan** | Whole repo or `/tree/<branch>/<folder>` in one download; triage, AI repository overview, deep reviews; chat learns the repo (RAG) |
 | **AI Chat** | Context-aware tutor (beginner mode) that sees your code, its analysis, and the imported repo |
-| **Live Execution** | Local toolchains for about 15 languages; any language via Piston or Judge0 |
-| **AI Providers** | Your own key, then Ollama, Groq, Gemini, OpenAI, with automatic failover; keys are per session |
+| **Live Execution** | 40 languages with stdin in isolated sandboxes (Compiler Explorer, Wandbox, Paiza.IO, TIO), no keys needed, with per-language routing and failover |
+| **AI Providers** | Your own key, then Ollama, Groq, Gemini, OpenAI, with automatic failover, multi-key rotation and auto-discovery of retired models; users can paste a key inline whenever AI is unavailable |
 | **History** | Every analysis saved (SQLite / PostgreSQL) |
 
 ---
@@ -109,10 +109,11 @@ See [`.env.example`](.env.example) for the full list. Everything is optional; st
 
 | Variable | Description |
 |---|---|
-| `GROQ_API_KEY` / `GEMINI_API_KEY` / `OPENAI_API_KEY` | AI providers (any one; several give automatic failover) |
+| `GROQ_API_KEY` / `GEMINI_API_KEY` / `OPENAI_API_KEY` | AI providers (any one; several give automatic failover; comma-separate multiple keys to rotate them) |
 | `GITHUB_TOKEN` | GitHub rate limit 60 → 5,000 req/hr; enables private repos |
-| `PISTON_URL` / `JUDGE0_URL` (+`JUDGE0_KEY`) | Remote sandbox to execute languages not installed on the server |
-| `RUN_REMOTE_ONLY=1` | Never execute user code on the app server (recommended for public deployments) |
+| `RUN_REMOTE_ONLY=1` | Never execute user code on the app server (free sandboxes handle all languages) |
+| `RUN_PREFER_LOCAL=1` | Development: run with local toolchains first |
+| `PISTON_URL` / `JUDGE0_URL` (+`JUDGE0_KEY`) | Optional self-hosted sandboxes, tried after the free ones |
 | `DATABASE_URL` | PostgreSQL URL (SQLite by default) |
 | `API_URL` | Backend URL the frontend connects to (defaults to the Fly.io deployment) |
 

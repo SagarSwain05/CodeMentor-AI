@@ -1,20 +1,17 @@
 """
 Multi-language code runner.
 
-Strategy (first available wins):
-  1. Local toolchain on the server — Python, JavaScript, TypeScript (node ≥22
-     type-stripping / tsx), Java (single-file launch), C, C++, Go, Rust, Ruby,
-     PHP, Bash, Perl, Lua, R, Kotlin script, Swift, Dart, Julia, Scala-cli …
-  2. Remote sandbox, if configured:
-       PISTON_URL   e.g. https://your-piston-host/api/v2   (self-hosted, free)
+Strategy (first that works wins):
+  1. Free isolated sandboxes — Compiler Explorer, Wandbox, Paiza.IO — routed per
+     language with failover (see remote_runner.ROUTES). ~40 languages, no keys,
+     and untrusted code never runs on this server.
+  2. Self-hosted / keyed sandboxes, if configured:
+       PISTON_URL   e.g. https://your-piston-host/api/v2
        JUDGE0_URL   e.g. https://judge0-ce.p.rapidapi.com  (+ JUDGE0_KEY)
-  3. A clear message explaining how to enable the language.
-
-Every local run happens in a fresh temp directory with a scrubbed environment
-(no API keys), a wall-clock timeout, and POSIX CPU / file-size limits.
-NOTE: subprocess limits are not a security boundary — for a public deployment
-configure PISTON_URL / JUDGE0_URL so untrusted code runs in an isolated sandbox
-(set RUN_REMOTE_ONLY=1 to disable local execution entirely).
+  3. Local toolchains (Python, Node, javac, gcc, go, rustc, ruby, php …) as a
+     last resort — disabled in production with RUN_REMOTE_ONLY=1, because a
+     subprocess on the app server is not a security boundary.
+     RUN_PREFER_LOCAL=1 makes local the first choice for offline development.
 """
 
 from __future__ import annotations
@@ -30,7 +27,7 @@ import urllib.error
 import urllib.request
 from functools import lru_cache
 
-from codementor.services import languages
+from codementor.services import languages, remote_runner
 
 TIMEOUT = 10          # seconds for running user code
 COMPILE_TIMEOUT = 40  # seconds for compilers (javac/rustc/g++ are slow on first run)
@@ -323,8 +320,11 @@ _INSTALL_HINTS = {
 def available_runtimes() -> dict[str, str]:
     """Which languages can run right now and how (for the UI/docs)."""
     out = {}
+    free = remote_runner.supported_languages() if os.environ.get("RUN_DISABLE_FREE_SANDBOXES") != "1" else set()
     for lang in languages.LANGUAGE_IDS:
-        if os.environ.get("RUN_REMOTE_ONLY") != "1" and _plan(lang, "") is not None:
+        if lang in free:
+            out[lang] = "sandbox"
+        elif os.environ.get("RUN_REMOTE_ONLY") != "1" and _plan(lang, "") is not None:
             out[lang] = "local"
         elif os.environ.get("PISTON_URL") and lang in _PISTON_NAMES:
             out[lang] = "piston"
@@ -341,24 +341,42 @@ def run_code(code: str, language: str = "python", timeout: int = TIMEOUT, stdin:
         return {"stdout": "", "stderr": f"{languages.label(lang)} isn't an executable language. Use 🔍 Analyze to review it.",
                 "returncode": 0, "timed_out": False}
 
-    if os.environ.get("RUN_REMOTE_ONLY") != "1":
+    allow_local = os.environ.get("RUN_REMOTE_ONLY") != "1"
+
+    # Dev convenience: run locally first when explicitly asked (fastest, offline)
+    if allow_local and os.environ.get("RUN_PREFER_LOCAL") == "1":
         local = _run_local(code, lang, stdin)
         if local is not None:
             return local
+
+    # 1. Free isolated sandboxes (Compiler Explorer / Wandbox / Paiza.IO) — no keys
+    last_remote = None
+    if os.environ.get("RUN_DISABLE_FREE_SANDBOXES") != "1":
+        last_remote = remote_runner.run_remote(code, lang, stdin)
+        if last_remote is not None and not last_remote.get("unavailable"):
+            return last_remote
+
+    # 2. Self-hosted / keyed sandboxes, if configured
     for remote in (_run_piston, _run_judge0):
         res = remote(code, lang, stdin)
         if res is not None:
             return res
 
-    need = _INSTALL_HINTS.get(lang, f"a {languages.label(lang)} toolchain")
+    # 3. Local toolchain fallback (disabled in production with RUN_REMOTE_ONLY=1)
+    if allow_local:
+        local = _run_local(code, lang, stdin)
+        if local is not None:
+            return local
+
+    if last_remote is not None:
+        last_remote["stderr"] = ("⚠️ The execution sandboxes are busy right now — please try again in a few "
+                                 "seconds.\n\n" + last_remote["stderr"])
+        return last_remote
     return {
         "stdout": "",
         "stderr": (
-            f"⚡ {languages.label(lang)} can't be executed on this server yet.\n\n"
-            f"Enable it by either:\n"
-            f"  • installing {need} on the server, or\n"
-            f"  • setting PISTON_URL (self-hosted Piston) or JUDGE0_URL (+ JUDGE0_KEY) for a remote sandbox.\n\n"
-            f"🔍 Analyze still gives you a full review, CFG and AI suggestions for this language."
+            f"⚡ Running {languages.label(lang)} isn't supported by the execution sandboxes.\n\n"
+            f"🔍 Analyze still gives you a full review, control flow graph and AI suggestions for it."
         ),
         "returncode": 0, "timed_out": False,
     }

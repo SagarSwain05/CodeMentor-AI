@@ -82,15 +82,26 @@ Candidates are tried in order, and any rate-limit, auth, model-not-found, connec
 
 JSON mode is requested where supported and retried without it if a provider rejects the request.
 
+- **Multiple keys.** Each env var may hold several comma-separated keys. They are interleaved per model, so a rate-limited key fails over to the next key before moving to a weaker model.
+- **Retired models.** On "model not found", the service lists the provider's models, picks the best current chat model by preference rules, caches it and retries.
+- **Bounded latency.** SDK retries are disabled, because they sleep for `Retry-After`. Each attempt has a hard `asyncio.wait_for` deadline (`AI_REQUEST_DEADLINE`, default 60 s), and 5xx responses get one 2-second backoff.
+- **User keys.** When no provider can answer, the AI tab and the chat show an inline key box. The key is stored for the browser session only, and the review or question re-runs immediately.
+
 ## 6. Code execution
 
-The runner tries options in this order:
+User code never runs on the app server in production. A local subprocess could read the server's environment, and with it the API keys, through `/proc`. Instead, `remote_runner` sends code to free, key-less, isolated sandboxes:
 
-1. **Local toolchain** if present: Python, Node/Bun/Deno (JS, and TS via tsx or Node 22+), Java single-file launch, gcc/g++, Go, Rust, Ruby, PHP, Bash, Perl, Lua, R, Julia, Dart, Elixir, Haskell, Kotlin script, Swift, Scala.
-2. **Piston** (`PISTON_URL`) for about 30 languages.
-3. **Judge0** (`JUDGE0_URL` + `JUDGE0_KEY`).
+| Provider | Role |
+|---|---|
+| Compiler Explorer (godbolt.org) | Primary for most compiled languages; fastest (0.5–3 s) |
+| Wandbox | Primary for JS, TS (`--noCheck`), PHP, R, Bash, Groovy, SQL, Julia, Nim |
+| Paiza.IO (guest key) | Scala, Elixir, Erlang; fallback for many others |
+| TIO (tio.run) | Clojure and PowerShell; universal last resort |
 
-Local runs use a fresh temp directory and an environment with no secrets, plus CPU, file-size and core rlimits and a 10 s wall clock (40 s for compiles). **Subprocess limits are not isolation.** For a public deployment, set `RUN_REMOTE_ONLY=1` and use a Piston or Judge0 sandbox.
+- **Routing.** `ROUTES` lists, for each language, the providers that passed the verification matrix (`tests/run_samples.py`: a stdin-echo program in 32 languages), fastest first.
+- **Failover.** The next provider is tried when one is unavailable, rate-limited (HTTP 429), or hits a known toolchain breakage. Compilation errors in the user's code are returned as they are.
+- **Discovery.** Compiler catalogues are fetched and cached for 6 hours, so new versions are picked up and retired ones never break a language.
+- **Optional sandboxes.** Piston (`PISTON_URL`) and Judge0 (`JUDGE0_URL`) are tried after the free providers, and local toolchains after those. In production, `RUN_REMOTE_ONLY=1` disables local execution.
 
 ## 7. State & concurrency
 
@@ -104,6 +115,7 @@ All settings are in `.env.example`. The app runs with **zero** keys (full static
 
 ## 9. Known limits / next steps
 
-- Native compilers depend on the host image. Reflex Cloud only guarantees Python, so other languages use tree-sitter for errors and Piston/Judge0 for execution.
+- Native compiler checks in Analyze depend on the host image. On Reflex Cloud, other languages get syntax errors from tree-sitter, plus semantic findings from the AI review. Execution is unaffected, because it runs in the remote sandboxes.
+- The free sandboxes are community services with fair-use limits. For very high traffic, add a self-hosted Piston (`PISTON_URL`); it's already wired in as a further fallback.
 - The RAG index is in-process memory. With multiple backend workers, use Chroma or an external vector DB.
 - A Monaco editor (syntax highlighting, inline issue markers) would be the next UX upgrade.

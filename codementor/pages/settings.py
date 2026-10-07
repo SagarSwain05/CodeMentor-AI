@@ -158,7 +158,7 @@ def settings() -> rx.Component:
                         ),
                         rx.hstack(
                             rx.input(
-                                placeholder="gsk_…  /  AIza…  /  sk-…",
+                                placeholder="gsk_…  /  AIza… or AQ.…  /  sk-…",
                                 value=State.gemini_api_key_input,
                                 on_change=State.set_gemini_api_key_input,
                                 type="password",

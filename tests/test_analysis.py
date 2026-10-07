@@ -5,6 +5,9 @@ Run:  python -m pytest -q tests/
 Tests that need tree-sitter / lizard are skipped automatically if missing.
 """
 
+import os
+import sys
+
 import pytest
 
 from codementor.services import languages, syntax_service
@@ -249,19 +252,76 @@ def test_pick_model_skips_non_chat_and_previews():
 
 # ─── Runner ──────────────────────────────────────────────────────────────────
 
-def test_run_python_with_stdin():
+@pytest.fixture
+def local_runner(monkeypatch):
+    """Force the local toolchain path (offline, deterministic)."""
+    monkeypatch.setenv("RUN_PREFER_LOCAL", "1")
+    monkeypatch.delenv("RUN_REMOTE_ONLY", raising=False)
+
+
+def test_run_python_with_stdin(local_runner):
     res = run_code("print(input()[::-1])", "python", stdin="abc\n")
     assert res["stdout"].strip() == "cba"
 
 
-def test_run_python_timeout():
+def test_run_python_timeout(local_runner):
     res = run_code("while True: pass", "python")  # hits the 10 s runner timeout
     assert res["timed_out"] or res["returncode"] != 0
 
 
-def test_run_python_has_no_secrets_in_env():
+def test_run_python_has_no_secrets_in_env(local_runner, monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_secret")
     res = run_code("import os; print(sorted(k for k in os.environ if 'KEY' in k))", "python")
     assert res["stdout"].strip() == "[]"
+
+
+def test_every_runnable_language_has_a_route():
+    from codementor.services.remote_runner import ROUTES, LANG_MAP, _PAIZA_NAMES, _TIO_NAMES
+    sys.path.insert(0, os.path.dirname(__file__))
+    from run_samples import RUN_SAMPLES
+    for lang in RUN_SAMPLES:
+        assert lang in ROUTES, lang
+        for provider in ROUTES[lang]:
+            if provider == "paiza":
+                assert lang in _PAIZA_NAMES, (lang, provider)
+            elif provider == "tio":
+                assert lang in _TIO_NAMES, (lang, provider)
+            else:
+                idx = 0 if provider == "wandbox" else 1
+                assert LANG_MAP[lang][idx], (lang, provider)
+
+
+def test_java_public_class_is_adapted_for_compiler_explorer():
+    from codementor.services.remote_runner import _prepare
+    code, _ = _prepare("public class Main { public static void main(String[] a) {} }", "java", "godbolt")
+    assert code.startswith("class Main")
+    _, extra = _prepare("let x: number = 1;", "typescript", "wandbox")
+    assert extra == {"compiler-option-raw": "--noCheck"}
+
+
+def test_server_keys_rotate_per_model(monkeypatch):
+    from codementor.services import gemini_service as ai
+    monkeypatch.setenv("DISABLE_OLLAMA", "1")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_aaaaaa1, gsk_bbbbbb2")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("GROQ_MODEL", raising=False)
+    order = [(p.model, p.api_key[-1]) for p in ai.providers()]
+    assert order[:2] == [(ai.GROQ_MODELS[0], "1"), (ai.GROQ_MODELS[0], "2")]
+    assert ai.detect_key_provider("AQ.fake-key-for-tests") == "gemini"
+
+
+@pytest.mark.skipif(os.environ.get("NETWORK_TESTS") != "1", reason="set NETWORK_TESTS=1 to hit the sandboxes")
+def test_remote_sandboxes_run_every_language(monkeypatch):
+    monkeypatch.setenv("RUN_REMOTE_ONLY", "1")
+    sys.path.insert(0, os.path.dirname(__file__))
+    from run_samples import RUN_SAMPLES, FIXED_OUTPUT
+    failures = {}
+    for lang, code in RUN_SAMPLES.items():
+        res = run_code(code, lang, stdin="Tester\n")
+        if FIXED_OUTPUT.get(lang, "Hello, Tester!") not in res["stdout"] + res["stderr"]:
+            failures[lang] = (res.get("runner"), res["stderr"][:200])
+    assert not failures, failures
 
 
 def test_run_markdown_is_rejected_politely():

@@ -2,7 +2,8 @@
 
 import reflex as rx
 from codementor.state import State
-from codementor.components.theme import COLORS, TERMINAL_STYLE, SEVERITY_COLORS
+from codementor.components.theme import COLORS, TERMINAL_STYLE
+from codementor.components.ai_key_prompt import ai_key_prompt
 
 
 # ─── Tab: Terminal ─────────────────────────────────────────────────────────
@@ -343,6 +344,11 @@ def optimizations_tab() -> rx.Component:
             State.ai_optimizations != "",
             rx.scroll_area(
                 rx.box(
+                    rx.cond(
+                        State.ai_needs_key,
+                        ai_key_prompt(State.save_api_key_and_retry_analysis, "Save key & re-analyze"),
+                        rx.box(),
+                    ),
                     rx.cond(
                         State.has_optimized_code,
                         rx.hstack(
