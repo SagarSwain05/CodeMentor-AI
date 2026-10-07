@@ -4,7 +4,7 @@ An intelligent, AI-powered code review platform for students, developers, and ed
 
 > Reviews code in **40+ languages**: Python, JavaScript/TypeScript, Java, C/C++, C#, Go, Rust, Kotlin, Swift, Ruby, PHP, Scala, Dart, Lua, Bash, SQL, HTML/CSS, JSON/YAML/TOML and more.
 
-🌐 **Live Demo:** [https://codementor-silver-apple.reflex.run/](https://codementor-silver-apple.reflex.run/) · 📐 [System design](docs/SYSTEM_DESIGN.md)
+🌐 **Live Demo:** [https://codementor-ai-lime-ring.reflex.run/](https://codementor-ai-lime-ring.reflex.run/) · 📐 [System design](docs/SYSTEM_DESIGN.md)
 
 ---
 
@@ -128,7 +128,7 @@ Providers are tried in order, and failures fall through automatically:
 
 ## Deployment
 
-Deployed on **Reflex Cloud** —  [https://codementor-silver-apple.reflex.run/](https://codementor-silver-apple.reflex.run/)
+Deployed on **Reflex Cloud** —  [https://codementor-ai-lime-ring.reflex.run/](https://codementor-ai-lime-ring.reflex.run/)
 
 
 ---
