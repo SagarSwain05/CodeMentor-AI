@@ -88,7 +88,7 @@ pip install -r requirements.txt
 # 3. Set up environment variables
 cp .env.example .env
 # Add any AI key (GROQ_API_KEY / GEMINI_API_KEY / OPENAI_API_KEY)
-# and API_URL=http://localhost:8000 for local development
+
 
 # 4. (Optional) Run Ollama for fully local AI
 ollama serve
@@ -115,7 +115,7 @@ See [`.env.example`](.env.example) for the full list. Everything is optional; st
 | `RUN_PREFER_LOCAL=1` | Development: run with local toolchains first |
 | `PISTON_URL` / `JUDGE0_URL` (+`JUDGE0_KEY`) | Optional self-hosted sandboxes, tried after the free ones |
 | `DATABASE_URL` | PostgreSQL URL (SQLite by default) |
-| `API_URL` | Backend URL the frontend connects to (defaults to the Fly.io deployment) |
+| `API_URL` | Only to point the frontend at a different backend (Reflex Cloud sets it automatically) |
 
 ---
 
@@ -130,7 +130,6 @@ Providers are tried in order, and failures fall through automatically:
 
 Deployed on **Reflex Cloud** —  [https://codementor-silver-apple.reflex.run/](https://codementor-silver-apple.reflex.run/)
 
-Backend: `https://be6df7dd-6c4d-4bb1-a59e-85c2dd171c63.fly.dev`
 
 ---
 
