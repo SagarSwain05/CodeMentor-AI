@@ -40,7 +40,7 @@ def brand_logo() -> rx.Component:
             rx.vstack(
                 rx.text("AI Code Reviewer", font_size="15px", font_weight="700",
                         color=COLORS["text_primary"], line_height="1"),
-                rx.text("Powered by Ollama", font_size="10px",
+                rx.text("40+ languages · AI-powered", font_size="10px",
                         color=COLORS["text_muted"], line_height="1"),
                 spacing="0",
                 align="start",

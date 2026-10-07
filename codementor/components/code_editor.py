@@ -3,33 +3,27 @@
 import reflex as rx
 from codementor.state import State
 from codementor.components.theme import COLORS, CODE_EDITOR_STYLE
+from codementor.services.languages import LANGUAGE_IDS
 
 
-LANGUAGES = ["python", "javascript", "typescript", "java", "c", "cpp", "go", "rust"]
-
-LANG_ICONS = {
-    "python": "🐍",
-    "javascript": "🟨",
-    "typescript": "🔷",
-    "java": "☕",
-    "c": "🔵",
-    "cpp": "🔷",
-    "go": "🐹",
-    "rust": "⚙️",
-}
+# "auto" lets the analyzer detect the language from the file name / content
+LANGUAGES = ["auto"] + LANGUAGE_IDS
 
 
 def toolbar() -> rx.Component:
     return rx.hstack(
         # Language selector
-        rx.select(
-            LANGUAGES,
-            value=State.language,
-            on_change=State.set_language,
-            size="1",
-            variant="soft",
-            color_scheme="gray",
-            width="120px",
+        rx.tooltip(
+            rx.select(
+                LANGUAGES,
+                value=State.language,
+                on_change=State.set_language,
+                size="1",
+                variant="soft",
+                color_scheme="gray",
+                width="130px",
+            ),
+            content=State.language_label,
         ),
 
         rx.separator(orientation="vertical", height="24px", color=COLORS["border"]),
@@ -132,7 +126,7 @@ def toolbar() -> rx.Component:
 
         # File name badge
         rx.badge(
-            State.current_file,
+            State.current_file_name,
             color_scheme="gray",
             variant="soft",
             font_size="12px",
@@ -188,13 +182,14 @@ def code_editor_area() -> rx.Component:
         toolbar(),
         rx.hstack(
             # Uncontrolled textarea — using default_value + key avoids cursor-jump.
-            # key=current_file remounts the element on file switch so new content loads.
+            # key=editor_key (file + version) remounts the element whenever code is
+            # changed programmatically (file switch, upload, apply fix, history load).
             # on_blur syncs content to state when user moves focus away.
             rx.el.textarea(
                 default_value=State.code,
-                key=State.current_file,
+                key=State.editor_key,
                 on_blur=State.set_code,
-                placeholder="# Paste or type your code here...\n# Click ▶ Run to execute  |  🔍 Analyze to review",
+                placeholder="// Paste or type code in any language...\n// ▶ Run to execute  |  🔍 Analyze to review",
                 spell_check=False,
                 auto_complete="off",
                 auto_correct="off",

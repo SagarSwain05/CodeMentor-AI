@@ -37,7 +37,7 @@ FEATURES = [
     {
         "icon": "bot",
         "title": "AI Chat Assistant",
-        "description": "Ask anything about your code in natural language. Powered by Ollama + qwen2.5-coder:7b running 100% locally. Explain, debug, optimize, or document.",
+        "description": "Ask anything about your code in natural language. Sees your code, its analysis and your imported repo. Explain, debug, optimize, or document.",
         "color": "#bc8cff",
     },
     {
@@ -55,7 +55,7 @@ FEATURES = [
     {
         "icon": "terminal",
         "title": "Live Code Execution",
-        "description": "Run Python code in a sandboxed environment and see output instantly in the integrated terminal.",
+        "description": "Run Python, JavaScript, Java, C/C++ and more in a sandboxed environment and see output instantly in the integrated terminal.",
         "color": "#58a6ff",
     },
     {
@@ -209,7 +209,7 @@ def _step(number: str, title: str, desc: str, color: str) -> rx.Component:
 
 def how_it_works_section() -> rx.Component:
     steps = [
-        ("1", "Paste or write your Python code",
+        ("1", "Paste, upload or import code in any language",
          "Use the built-in code editor or upload a .py file directly.", "#58a6ff"),
         ("2", "Click Analyze",
          "AST parsing, Pylint, Bandit, and Radon run simultaneously in under 2 seconds.", "#3fb950"),
@@ -363,7 +363,7 @@ def cta_section() -> rx.Component:
                 letter_spacing="-0.5px",
             ),
             rx.text(
-                "Start analyzing your Python code instantly — no sign-up, no API keys, no cost.",
+                "Start analyzing code in any language instantly — no sign-up, no API keys, no cost.",
                 font_size="15px",
                 color=COLORS["text_secondary"],
                 text_align="center",

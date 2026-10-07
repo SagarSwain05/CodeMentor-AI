@@ -6,12 +6,13 @@ from codementor.components.theme import COLORS, SIDEBAR_STYLE
 
 
 def file_item(file: dict) -> rx.Component:
-    is_active = file["name"] == State.current_file
+    is_active = file["path"] == State.current_file
     return rx.hstack(
         rx.icon("file_code", size=13, color=COLORS["accent_blue"],
                 flex_shrink="0"),
         rx.text(
             file["name"],
+            title=file["path"],
             font_size="12px",
             color=rx.cond(is_active, COLORS["text_primary"], COLORS["text_secondary"]),
             font_weight=rx.cond(is_active, "600", "400"),
@@ -21,12 +22,12 @@ def file_item(file: dict) -> rx.Component:
             flex="1",
             min_width="0",
             cursor="pointer",
-            on_click=State.select_file(file["name"]),
+            on_click=State.select_file(file["path"]),
         ),
         # Delete button — only visible on hover via CSS
         rx.icon_button(
             rx.icon("x", size=11),
-            on_click=State.delete_file(file["name"]),
+            on_click=State.delete_file(file["path"]),
             size="1",
             variant="ghost",
             color=COLORS["text_muted"],
@@ -78,17 +79,7 @@ def sidebar() -> rx.Component:
                         ),
                         content="Upload File",
                     ),
-                    accept={
-                        "text/x-python": [".py"],
-                        "text/javascript": [".js", ".jsx"],
-                        "text/typescript": [".ts", ".tsx"],
-                        "text/plain": [
-                            ".txt", ".java", ".c", ".cpp", ".go",
-                            ".rs", ".rb", ".php", ".swift", ".kt",
-                            ".cs", ".sh", ".html", ".css", ".sql", ".md",
-                        ],
-                        "application/json": [".json"],
-                    },
+                    # any text source file is accepted; binaries are rejected server-side
                     on_drop=State.handle_upload(
                         rx.upload_files(upload_id="sidebar_upload")
                     ),
@@ -125,17 +116,6 @@ def sidebar() -> rx.Component:
                             "background": "rgba(88,166,255,0.04)"},
                     transition="all 0.15s",
                 ),
-                accept={
-                    "text/x-python": [".py"],
-                    "text/javascript": [".js", ".jsx"],
-                    "text/typescript": [".ts", ".tsx"],
-                    "text/plain": [
-                        ".txt", ".java", ".c", ".cpp", ".go",
-                        ".rs", ".rb", ".php", ".swift", ".kt",
-                        ".cs", ".sh", ".html", ".css", ".sql", ".md",
-                    ],
-                    "application/json": [".json"],
-                },
                 on_drop=State.handle_upload(
                     rx.upload_files(upload_id="drop_zone_upload")
                 ),

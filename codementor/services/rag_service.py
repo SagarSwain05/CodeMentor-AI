@@ -18,20 +18,25 @@ Usage:
 """
 
 import ast
+import os
 import re
 import math
 from collections import defaultdict
-from typing import Optional
 
-# ChromaDB is optional — falls back to keyword search if not installed
-try:
-    import chromadb
-    from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
-    _CHROMA_CLIENT = chromadb.EphemeralClient()
-    HAS_CHROMA = True
-except Exception:
-    HAS_CHROMA = False
-    _CHROMA_CLIENT = None
+from codementor.services import languages
+
+# ChromaDB is opt-in (ENABLE_CHROMA=1): it downloads an embedding model on first
+# use, which is slow/heavy on small cloud instances. BM25 works everywhere.
+HAS_CHROMA = False
+_CHROMA_CLIENT = None
+if os.environ.get("ENABLE_CHROMA", "").lower() in ("1", "true", "yes"):
+    try:
+        import chromadb
+        from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
+        _CHROMA_CLIENT = chromadb.EphemeralClient()
+        HAS_CHROMA = True
+    except Exception:
+        HAS_CHROMA = False
 
 # In-memory store: repo_id → list of chunk dicts
 _repo_chunks: dict[str, list[dict]] = {}
@@ -120,11 +125,7 @@ def _make_chunk(filepath, name, chunk_id, code, line, kind) -> dict:
 
 
 def _detect_language(filepath: str) -> str:
-    ext = filepath.rsplit(".", 1)[-1].lower() if "." in filepath else ""
-    return {
-        "py": "python", "js": "javascript", "ts": "typescript",
-        "jsx": "javascript", "tsx": "typescript",
-    }.get(ext, "other")
+    return languages.from_filename(filepath) or "other"
 
 
 # ─── Indexing ─────────────────────────────────────────────────────────────────

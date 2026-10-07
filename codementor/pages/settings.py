@@ -47,7 +47,7 @@ def settings() -> rx.Component:
 
                 # Ollama (primary AI) section
                 settings_section(
-                    "Local AI — Ollama (Recommended)", "cpu",
+                    "AI Status · Local Ollama (optional)", "cpu",
                     rx.vstack(
                         rx.hstack(
                             rx.vstack(
@@ -146,17 +146,19 @@ def settings() -> rx.Component:
                     ),
                 ),
 
-                # OpenAI fallback section
+                # Cloud AI key section
                 settings_section(
-                    "OpenAI Fallback (Cloud)", "key",
+                    "Cloud AI Key — Groq / Gemini / OpenAI", "key",
                     rx.vstack(
                         rx.text(
-                            "Used when Ollama is not running. Requires credits.",
-                            font_size="12px", color=COLORS["text_muted"],
+                            "Paste any one key — the provider is detected automatically. "
+                            "Keys are kept only for your browser session and are never "
+                            "shared with other users. Multiple keys = automatic failover.",
+                            font_size="12px", color=COLORS["text_muted"], line_height="1.5",
                         ),
                         rx.hstack(
                             rx.input(
-                                placeholder="sk-proj-...",
+                                placeholder="gsk_…  /  AIza…  /  sk-…",
                                 value=State.gemini_api_key_input,
                                 on_change=State.set_gemini_api_key_input,
                                 type="password",
@@ -183,24 +185,29 @@ def settings() -> rx.Component:
                             rx.hstack(
                                 rx.icon("circle_check", size=13,
                                         color=COLORS["accent_green"]),
-                                rx.text("OpenAI key saved for this session.",
+                                rx.text(State.api_key_provider, " key saved for this session.",
                                         font_size="12px",
                                         color=COLORS["accent_green"]),
-                                spacing="1",
+                                rx.spacer(),
+                                rx.button("Remove keys", on_click=State.clear_api_keys,
+                                          size="1", variant="ghost", color_scheme="red"),
+                                spacing="1", width="100%", align="center",
                             ),
                             rx.hstack(
-                                rx.icon("external_link", size=12,
-                                        color=COLORS["accent_blue"]),
-                                rx.link(
-                                    "Get an OpenAI API key →",
-                                    href="https://platform.openai.com/api-keys",
-                                    is_external=True,
-                                    font_size="12px",
-                                    color=COLORS["accent_blue"],
-                                    text_decoration="none",
-                                    _hover={"text_decoration": "underline"},
-                                ),
-                                spacing="1",
+                                *[
+                                    rx.link(
+                                        label, href=href, is_external=True,
+                                        font_size="12px", color=COLORS["accent_blue"],
+                                        text_decoration="none",
+                                        _hover={"text_decoration": "underline"},
+                                    )
+                                    for label, href in (
+                                        ("Free Groq key →", "https://console.groq.com/keys"),
+                                        ("Free Gemini key →", "https://aistudio.google.com/app/apikey"),
+                                        ("OpenAI key →", "https://platform.openai.com/api-keys"),
+                                    )
+                                ],
+                                spacing="4", wrap="wrap",
                             ),
                         ),
                         spacing="3", width="100%",
@@ -406,7 +413,7 @@ def settings() -> rx.Component:
                             rx.text("AI Backend", font_size="13px",
                                     color=COLORS["text_secondary"]),
                             rx.spacer(),
-                            rx.badge("Ollama (local) → OpenAI (fallback)",
+                            rx.badge("Your key → Ollama → Groq → Gemini → OpenAI",
                                      color_scheme="green", variant="soft"),
                             width="100%",
                         ),
@@ -414,7 +421,7 @@ def settings() -> rx.Component:
                             rx.text("Static Analysis", font_size="13px",
                                     color=COLORS["text_secondary"]),
                             rx.spacer(),
-                            rx.badge("pyflakes + radon + bandit",
+                            rx.badge("tree-sitter · lizard · pyflakes · bandit · 40+ languages",
                                      color_scheme="blue", variant="soft"),
                             width="100%",
                         ),

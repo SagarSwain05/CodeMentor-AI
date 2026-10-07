@@ -7,6 +7,19 @@ import reflex as rx
 from datetime import datetime
 
 
+def ensure_tables() -> None:
+    """
+    Create any missing tables. alembic/versions is not committed, so a fresh
+    deployment (new SQLite file or empty Postgres) would otherwise have no
+    `snippet` table and history would silently fail. Idempotent; never raises.
+    """
+    try:
+        from codementor.models import Snippet, ChatLog  # noqa: F401 — register models
+        rx.Model.create_all()
+    except Exception as e:
+        print(f"DB ensure_tables error: {e}")
+
+
 # ─── Snippet CRUD ─────────────────────────────────────────────────────────────
 
 def save_snippet(data: dict) -> dict | None:

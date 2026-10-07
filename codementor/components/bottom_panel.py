@@ -235,6 +235,22 @@ def errors_tab() -> rx.Component:
                     align="center",
                     flex_wrap="wrap",
                 ),
+                # ── Which analyzers ran ────────────────────────────────────
+                rx.cond(
+                    State.analysis_tools != "",
+                    rx.hstack(
+                        rx.icon("cpu", size=11, color=COLORS["text_muted"]),
+                        rx.text(State.analyzed_language, font_size="11px",
+                                font_weight="600", color=COLORS["text_secondary"]),
+                        rx.text("·", font_size="11px", color=COLORS["text_muted"]),
+                        rx.text(State.analysis_tools, font_size="11px",
+                                color=COLORS["text_muted"], overflow="hidden",
+                                text_overflow="ellipsis", white_space="nowrap"),
+                        spacing="2", align="center", padding="3px 12px",
+                        width="100%", border_bottom=f"1px solid {COLORS['border']}",
+                    ),
+                    rx.box(),
+                ),
                 # ── Issue lists ────────────────────────────────────────────
                 rx.scroll_area(
                     rx.vstack(
@@ -249,9 +265,19 @@ def errors_tab() -> rx.Component:
                             rx.box(),
                         ),
                         rx.cond(
+                            State.ai_report.length() > 0,
+                            rx.vstack(
+                                _section_header("AI Review Findings",
+                                                COLORS["accent_purple"]),
+                                rx.foreach(State.ai_report, issue_row),
+                                spacing="0", width="100%",
+                            ),
+                            rx.box(),
+                        ),
+                        rx.cond(
                             State.security_report.length() > 0,
                             rx.vstack(
-                                _section_header("Security Issues (Bandit)",
+                                _section_header("Security Issues",
                                                 "#f85149"),
                                 rx.foreach(State.security_report, issue_row),
                                 spacing="0", width="100%",
@@ -261,7 +287,7 @@ def errors_tab() -> rx.Component:
                         rx.cond(
                             State.complexity_report.length() > 0,
                             rx.vstack(
-                                _section_header("High Complexity (Radon)",
+                                _section_header("Complexity & Maintainability",
                                                 COLORS["accent_purple"]),
                                 rx.foreach(State.complexity_report, issue_row),
                                 spacing="0", width="100%",
@@ -271,7 +297,7 @@ def errors_tab() -> rx.Component:
                         rx.cond(
                             State.style_report.length() > 0,
                             rx.vstack(
-                                _section_header("Style Issues (PEP8)",
+                                _section_header("Style Issues",
                                                 COLORS["accent_yellow"]),
                                 rx.foreach(State.style_report, issue_row),
                                 spacing="0", width="100%",
@@ -317,6 +343,26 @@ def optimizations_tab() -> rx.Component:
             State.ai_optimizations != "",
             rx.scroll_area(
                 rx.box(
+                    rx.cond(
+                        State.has_optimized_code,
+                        rx.hstack(
+                            rx.icon("sparkles", size=14, color=COLORS["accent_purple"]),
+                            rx.text("AI produced a complete optimized version of this file.",
+                                    font_size="12px", color=COLORS["text_secondary"]),
+                            rx.spacer(),
+                            rx.button(
+                                rx.icon("wand_sparkles", size=13),
+                                "Apply optimized code",
+                                on_click=State.apply_optimized_code,
+                                size="1", color_scheme="purple", variant="solid",
+                            ),
+                            align="center", width="100%", padding="8px 12px",
+                            margin_bottom="8px", border_radius="6px",
+                            background="rgba(188,140,255,0.08)",
+                            border="1px solid rgba(188,140,255,0.3)",
+                        ),
+                        rx.box(),
+                    ),
                     rx.markdown(
                         State.ai_optimizations,
                         class_name="markdown-content",
@@ -366,6 +412,9 @@ def cfg_tab() -> rx.Component:
                     rx.text("Control Flow Graph",
                             font_size="12px", font_weight="600",
                             color=COLORS["text_muted"]),
+                    rx.text(State.cfg_summary, font_size="11px",
+                            color=COLORS["text_muted"], overflow="hidden",
+                            text_overflow="ellipsis", white_space="nowrap"),
                     rx.spacer(),
                     rx.link(
                         rx.icon_button(
@@ -389,6 +438,16 @@ def cfg_tab() -> rx.Component:
                         border_radius="4px",
                         margin="8px auto",
                         display="block",
+                    ),
+                    rx.el.details(
+                        rx.el.summary(
+                            "Mermaid source (paste into GitHub/Markdown docs)",
+                            style={"cursor": "pointer", "font_size": "12px",
+                                   "color": COLORS["text_muted"], "padding": "4px 12px"},
+                        ),
+                        rx.code_block(State.cfg_mermaid, language="markdown",
+                                      font_size="11px", can_copy=True),
+                        style={"padding": "0 12px 12px 12px"},
                     ),
                     height="100%",
                 ),
@@ -465,9 +524,10 @@ def repo_file_row(item: dict) -> rx.Component:
             font_family="monospace",
             flex_shrink="0",
         ),
-        # Path (muted)
+        # Path (muted) — hover shows the top finding
         rx.text(
             item["path"],
+            title=item["top_issue"],
             font_size="11px",
             color=COLORS["text_muted"],
             overflow="hidden",
@@ -475,7 +535,14 @@ def repo_file_row(item: dict) -> rx.Component:
             white_space="nowrap",
             flex="1",
         ),
+        rx.badge(item["language"], color_scheme="gray", variant="outline",
+                 font_size="10px", flex_shrink="0"),
         # Metrics badges
+        rx.badge(
+            rx.hstack(rx.icon("shield", size=10), rx.text(item["security_count"]), spacing="1"),
+            color_scheme=item["security_color"],
+            variant="soft", font_size="10px", flex_shrink="0",
+        ),
         rx.badge(
             rx.hstack(rx.text("CC:"), rx.text(item["complexity"]), spacing="1"),
             color_scheme=item["complexity_color"],
@@ -516,8 +583,8 @@ def repo_file_row(item: dict) -> rx.Component:
 def repo_scan_tab() -> rx.Component:
     return rx.box(
         rx.cond(
-            State.is_repo_scanning,
-            # ── Scanning in progress ──
+            State.is_repo_scanning & (State.repo_scan_results.length() == 0),
+            # ── Scanning in progress (no results yet) ──
             rx.vstack(
                 rx.hstack(
                     rx.spinner(size="2", color=COLORS["accent_blue"]),
@@ -536,7 +603,11 @@ def repo_scan_tab() -> rx.Component:
                 rx.vstack(
                     # Summary bar
                     rx.hstack(
-                        rx.icon("github", size=13, color=COLORS["text_muted"]),
+                        rx.cond(
+                            State.is_repo_scanning,
+                            rx.spinner(size="1"),
+                            rx.icon("github", size=13, color=COLORS["text_muted"]),
+                        ),
                         rx.text(
                             State.repo_name_display,
                             font_size="12px", font_weight="600",
@@ -564,6 +635,13 @@ def repo_scan_tab() -> rx.Component:
                         width="100%",
                         align="center",
                     ),
+                    rx.cond(
+                        State.repo_languages_display != "",
+                        rx.text(State.repo_languages_display, font_size="11px",
+                                color=COLORS["text_muted"], padding="3px 12px",
+                                width="100%", border_bottom=f"1px solid {COLORS['border']}"),
+                        rx.box(),
+                    ),
                     # File table
                     rx.scroll_area(
                         rx.vstack(
@@ -571,7 +649,8 @@ def repo_scan_tab() -> rx.Component:
                             spacing="0",
                             width="100%",
                         ),
-                        height="120px",
+                        height=rx.cond(State.repo_scan_gemini_output != "", "40%", "100%"),
+                        min_height="80px",
                     ),
                     # Gemini AI section
                     rx.cond(
@@ -580,7 +659,7 @@ def repo_scan_tab() -> rx.Component:
                             rx.hstack(
                                 rx.icon("bot", size=13,
                                         color=COLORS["accent_purple"]),
-                                rx.text("AI Analysis of Flagged Files",
+                                rx.text("AI Repository Review",
                                         font_size="11px", font_weight="600",
                                         color=COLORS["accent_purple"],
                                         letter_spacing="0.3px"),
@@ -599,8 +678,14 @@ def repo_scan_tab() -> rx.Component:
                                     ),
                                     padding="8px 16px",
                                 ),
-                                height="80px",
+                                flex="1",
+                                min_height="0",
                             ),
+                            flex="1",
+                            min_height="0",
+                            display="flex",
+                            flex_direction="column",
+                            width="100%",
                         ),
                         rx.box(),
                     ),
@@ -629,9 +714,13 @@ def repo_scan_tab() -> rx.Component:
                                  font_size="10px"),
                         rx.text("+", font_size="11px",
                                 color=COLORS["text_muted"]),
-                        rx.badge("Gemini AI", color_scheme="purple",
+                        rx.badge("Security", color_scheme="red", variant="soft",
+                                 font_size="10px"),
+                        rx.text("+", font_size="11px",
+                                color=COLORS["text_muted"]),
+                        rx.badge("AI review", color_scheme="purple",
                                  variant="soft", font_size="10px"),
-                        rx.text("on every .py file",
+                        rx.text("for every language",
                                 font_size="11px", color=COLORS["text_muted"]),
                         spacing="1",
                         align="center",

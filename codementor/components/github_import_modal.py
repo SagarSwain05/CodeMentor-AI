@@ -69,7 +69,10 @@ def github_import_modal() -> rx.Component:
                             "REPO", "github.com/owner/repo", "blue"
                         ),
                         _url_example_row(
-                            "FILE", "github.com/owner/repo/blob/main/app.py", "green"
+                            "FOLDER", "github.com/owner/repo/tree/main/src", "orange"
+                        ),
+                        _url_example_row(
+                            "FILE", "github.com/owner/repo/blob/main/app.go", "green"
                         ),
                         _url_example_row(
                             "RAW", "raw.githubusercontent.com/owner/repo/main/app.py", "purple"
@@ -209,12 +212,13 @@ def github_import_modal() -> rx.Component:
                                      variant="soft", font_size="10px"),
                             rx.vstack(
                                 rx.text(
-                                    "Runs AST + lint analysis on every .py file.",
+                                    "Scans every source file in 40+ languages: syntax, "
+                                    "lint, complexity and security.",
                                     font_size="12px", color=COLORS["text_muted"],
                                 ),
                                 rx.text(
-                                    "Only sends flagged files to Gemini AI — "
-                                    "saves API quota.",
+                                    "AI writes a repo overview + deep-reviews the worst "
+                                    "files, and chat learns the codebase.",
                                     font_size="12px", color=COLORS["text_muted"],
                                 ),
                                 spacing="0",

@@ -78,7 +78,8 @@ def parse_github_url(url: str) -> dict[str, Any]:
     bare_match = re.match(r"https://github\.com/([^/]+)/([^/#?]+?)(?:\.git)?/?$", url)
     if bare_match:
         owner, repo = bare_match.groups()
-        return {"type": "repo", "owner": owner, "repo": repo, "branch": "main"}
+        # branch "" → resolved to the repo's real default branch at fetch time
+        return {"type": "repo", "owner": owner, "repo": repo, "branch": ""}
 
     return {"type": "unknown", "error": f"Cannot parse GitHub URL: {url!r}"}
 
@@ -189,6 +190,7 @@ def fetch_repo_tree(
     Auto-retries with 'master' if 'main' returns 404.
     """
     # First, get the default branch commit SHA
+    branch = branch or "main"
     branches_to_try = [branch] if branch != "main" else ["main", "master"]
     tree_data = None
     resolved_branch = branch
@@ -322,3 +324,119 @@ def triage_files(
 
 def repo_display_name(owner: str, repo: str) -> str:
     return f"{owner}/{repo}"
+
+
+# ─── Whole-repo snapshot (one zipball request, any language) ─────────────────
+
+SNAPSHOT_MAX_FILES = 300
+SNAPSHOT_MAX_FILE_BYTES = 200_000
+SNAPSHOT_MAX_ZIP_BYTES = 80 * 1024 * 1024
+
+_SKIP_DIRS = (
+    "node_modules/", ".git/", "vendor/", "__pycache__/", "dist/", "build/", "out/",
+    "target/", ".venv/", "venv/", ".next/", ".nuxt/", "coverage/", ".idea/", ".vscode/",
+    "bower_components/", "Pods/", ".gradle/", "third_party/", "site-packages/", ".web/",
+)
+_SKIP_SUFFIXES = (
+    ".min.js", ".min.css", ".map", ".lock", "-lock.json", ".lockb", ".pb.go", "_pb2.py",
+    ".generated.ts", ".d.ts",
+)
+_SKIP_NAMES = {"package-lock.json", "yarn.lock", "pnpm-lock.yaml", "poetry.lock",
+               "Cargo.lock", "composer.lock", "Gemfile.lock", "go.sum"}
+
+
+def get_default_branch(owner: str, repo: str, token: str | None = None) -> dict[str, Any]:
+    res = _get(f"https://api.github.com/repos/{owner}/{repo}", token)
+    if not res["ok"]:
+        return res
+    data = res["data"]
+    return {"ok": True, "branch": data.get("default_branch", "main"),
+            "description": data.get("description") or "", "private": data.get("private", False),
+            "stars": data.get("stargazers_count", 0)}
+
+
+def _file_rank(lang: str) -> int:
+    """Analyze code first, then markup, then config/docs when over the file cap."""
+    from codementor.services import languages
+    kind = languages.get(lang).kind
+    return {"code": 0, "markup": 1, "data": 2, "docs": 3}.get(kind, 4)
+
+
+def fetch_repo_snapshot(owner: str, repo: str, branch: str | None = None,
+                        subdir: str = "", token: str | None = None) -> dict[str, Any]:
+    """
+    Download a repository as a zipball and return its analyzable source files:
+      {"ok", "files": [{"path", "filename", "content", "language", "size"}],
+       "branch", "truncated", "skipped", "description"}
+    """
+    import io
+    import zipfile
+    from codementor.services import languages
+
+    meta = {"description": ""}
+    if not branch:
+        info = get_default_branch(owner, repo, token)
+        if not info["ok"]:
+            return {"ok": False, "error": info.get("error", "Repository not found.")}
+        branch = info["branch"]
+        meta["description"] = info.get("description", "")
+
+    url = f"https://api.github.com/repos/{owner}/{repo}/zipball/{urllib.parse.quote(branch, safe='')}"
+    req = urllib.request.Request(url, headers=_make_headers(token))
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            blob = resp.read(SNAPSHOT_MAX_ZIP_BYTES + 1)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return {"ok": False, "error": f"Branch '{branch}' not found, or the repo is private (add a GitHub token)."}
+        if e.code == 403:
+            return {"ok": False, "error": "GitHub rate limit or access denied — add a GitHub token in Settings."}
+        return {"ok": False, "error": f"GitHub returned HTTP {e.code}."}
+    except Exception as e:
+        return {"ok": False, "error": f"Download failed: {e}"}
+    if len(blob) > SNAPSHOT_MAX_ZIP_BYTES:
+        return {"ok": False, "error": "Repository archive is larger than 80 MB — scan a subfolder URL "
+                                      "(github.com/owner/repo/tree/<branch>/<folder>) instead."}
+
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(blob))
+    except zipfile.BadZipFile:
+        return {"ok": False, "error": "GitHub returned an invalid archive."}
+
+    subdir = subdir.strip("/")
+    candidates, skipped = [], 0
+    for entry in zf.infolist():
+        if entry.is_dir():
+            continue
+        # strip the "<owner>-<repo>-<sha>/" prefix GitHub adds
+        path = entry.filename.split("/", 1)[1] if "/" in entry.filename else entry.filename
+        if subdir and not (path == subdir or path.startswith(subdir + "/")):
+            continue
+        name = path.rsplit("/", 1)[-1]
+        lang = languages.from_filename(path)
+        if (not lang or lang == "text" or name in _SKIP_NAMES or path.endswith(_SKIP_SUFFIXES)
+                or any(f"/{d}" in f"/{path}" for d in _SKIP_DIRS)):
+            continue
+        if entry.file_size > SNAPSHOT_MAX_FILE_BYTES or entry.file_size == 0:
+            skipped += 1
+            continue
+        candidates.append((entry, path, name, lang))
+
+    candidates.sort(key=lambda c: (_file_rank(c[3]), c[1].count("/"), c[1]))
+    truncated = len(candidates) > SNAPSHOT_MAX_FILES
+    files = []
+    for entry, path, name, lang in candidates[:SNAPSHOT_MAX_FILES]:
+        raw = zf.read(entry)
+        if b"\x00" in raw[:4096]:
+            skipped += 1
+            continue
+        try:
+            content = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            content = raw.decode("latin-1")
+        files.append({"path": path, "filename": name, "content": content,
+                      "language": lang, "size": entry.file_size})
+
+    files.sort(key=lambda f: f["path"])
+    return {"ok": True, "files": files, "branch": branch, "truncated": truncated,
+            "skipped": skipped, **meta}

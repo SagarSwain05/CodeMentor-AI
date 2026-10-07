@@ -10,7 +10,7 @@ TECH_ITEMS = [
     ("Python AST", "Built-in abstract syntax tree parser", "#3fb950", "git-branch"),
     ("pyflakes", "Static error and bug detection", "#f85149", "circle_x"),
     ("pycodestyle", "PEP8 compliance checker", "#d29922", "square_check"),
-    ("Gemini 1.5 Flash", "Google's fast multimodal LLM for AI analysis", "#bc8cff", "bot"),
+    ("Groq · Gemini · OpenAI", "Multi-provider AI with automatic failover", "#bc8cff", "bot"),
     ("networkx + matplotlib", "Control flow graph generation and rendering", "#ffa657", "git_fork"),
     ("PostgreSQL / Neon.tech", "Serverless PostgreSQL database", "#58a6ff", "database"),
     ("SQLModel", "Type-safe ORM built on SQLAlchemy + Pydantic", "#3fb950", "table"),
@@ -38,7 +38,7 @@ MODULES = [
     {
         "number": "04",
         "title": "AI Optimization Suggestions",
-        "description": "Gemini 1.5 Flash analyzes your code for efficiency, readability, and best practices. Returns complexity analysis, before/after snippets, and actionable tips.",
+        "description": "The AI layer analyzes your code for efficiency, readability, and best practices. Returns complexity analysis, before/after snippets, and actionable tips.",
         "color": "#bc8cff",
     },
     {
@@ -128,7 +128,7 @@ def about() -> rx.Component:
                                font_weight="800"),
                     rx.text(
                         "An AI-powered code review platform designed to help students "
-                        "and developers write better, cleaner, and more efficient Python code.",
+                        "and developers write better, cleaner, and more efficient code in any language.",
                         font_size="16px",
                         color=COLORS["text_secondary"],
                         line_height="1.7",

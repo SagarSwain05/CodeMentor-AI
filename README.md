@@ -2,9 +2,9 @@
 
 An intelligent, AI-powered code review platform for students, developers, and educators — built with Python and Reflex.
 
-> **Phase 1:** Currently supports **Python** and several popular languages. Support for additional languages is actively in development and coming soon!
+> Reviews code in **40+ languages**: Python, JavaScript/TypeScript, Java, C/C++, C#, Go, Rust, Kotlin, Swift, Ruby, PHP, Scala, Dart, Lua, Bash, SQL, HTML/CSS, JSON/YAML/TOML and more.
 
-🌐 **Live Demo:** [https://codementor-silver-apple.reflex.run/](https://codementor-silver-apple.reflex.run/)
+🌐 **Live Demo:** [https://codementor-silver-apple.reflex.run/](https://codementor-silver-apple.reflex.run/) · 📐 [System design](docs/SYSTEM_DESIGN.md)
 
 ---
 
@@ -12,30 +12,17 @@ An intelligent, AI-powered code review platform for students, developers, and ed
 
 | Feature | Description |
 |---|---|
-| **Bug Detection** | AST + Pyflakes — catches syntax errors, undefined variables, unused imports |
-| **PEP 8 / Style Analysis** | Pycodestyle — enforces Python style guide, gives a Style Score /100 |
-| **Security Scanning** | Bandit — detects OWASP-equivalent vulnerabilities (eval, hardcoded secrets, SQL injection, etc.) |
-| **Complexity Analysis** | Radon — cyclomatic complexity grade (A–F) + Maintainability Index |
-| **AI Chat Assistant** | Context-aware AI chat powered by Groq LLaMA 3.1 8B (cloud) or Ollama (local) |
-| **Control Flow Graph** | NetworkX + Matplotlib — visual graph of branches, loops, and function calls |
-| **GitHub Repo Import** | PyGitHub + ChromaDB RAG — import and analyze entire GitHub repositories |
-| **Live Code Execution** | Sandboxed Python subprocess with real terminal output |
-| **Analysis History** | Every review session saved with full results and timestamps |
-| **Responsive UI** | Dark-themed, mobile-friendly interface built with Reflex + Radix |
-
----
-
-## Language Support
-
-| Language | Status |
-|---|---|
-| Python | ✅ Full support (Phase 1) |
-| JavaScript / TypeScript | 🚧 Coming soon |
-| Java | 🚧 Coming soon |
-| C / C++ | 🚧 Coming soon |
-| Go, Rust, and more | 🚧 Planned |
-
-> Phase 1 focuses on Python with deep static analysis. Multi-language support will be rolled out in upcoming phases.
+| **Error Detection** | pyflakes (Python) · native compilers when installed · tree-sitter syntax analysis for every other language · exact parsers for JSON/YAML/TOML/XML |
+| **Style Analysis** | pycodestyle (PEP 8) plus universal and per-language rules; density-based Style Score /100 |
+| **Security Scanning** | bandit plus a CWE-tagged rule pack: secrets, SQL/command injection, XSS sinks, unsafe C functions, weak crypto, TLS bypass |
+| **Complexity** | radon and lizard: cyclomatic complexity (rank A–F), long functions, parameter counts, Maintainability Index |
+| **Control Flow Graph** | Every function, every language (Python AST or tree-sitter, AI fallback); layered layout, PNG plus Mermaid export |
+| **AI Review & Optimization** | Line-level findings, Big-O analysis, before/after suggestions, and one-click **Apply optimized code** |
+| **GitHub Repo Scan** | Whole repo or `/tree/<branch>/<folder>` in one download; triage, AI repository overview, deep reviews; chat learns the repo (RAG) |
+| **AI Chat** | Context-aware tutor (beginner mode) that sees your code, its analysis, and the imported repo |
+| **Live Execution** | Local toolchains for about 15 languages; any language via Piston or Judge0 |
+| **AI Providers** | Your own key, then Ollama, Groq, Gemini, OpenAI, with automatic failover; keys are per session |
+| **History** | Every analysis saved (SQLite / PostgreSQL) |
 
 ---
 
@@ -44,12 +31,11 @@ An intelligent, AI-powered code review platform for students, developers, and ed
 | Layer | Technology |
 |---|---|
 | **Framework** | [Reflex](https://reflex.dev) 0.8 — Python full-stack, compiles to React |
-| **AI (Cloud)** | [Groq API](https://console.groq.com) — LLaMA 3.1 8B Instant (free tier) |
-| **AI (Local)** | [Ollama](https://ollama.ai) — qwen2.5-coder:7b (private, offline) |
-| **Static Analysis** | Pyflakes, Pycodestyle, Bandit, Radon |
-| **RAG / Search** | ChromaDB + BM25 (rank-bm25) |
-| **Graph Visualization** | NetworkX, Matplotlib |
-| **GitHub Integration** | PyGitHub |
+| **AI** | Groq · Google Gemini · OpenAI · Ollama (OpenAI-compatible async client, automatic failover) |
+| **Parsing** | [tree-sitter-language-pack](https://pypi.org/project/tree-sitter-language-pack/) (100+ grammars), Python `ast` |
+| **Static Analysis** | pyflakes, pycodestyle, bandit, radon, lizard, multi-language rule packs, native compilers |
+| **RAG / Search** | BM25 (built in), ChromaDB optional |
+| **Graph Visualization** | Matplotlib (custom layered layout) + Mermaid export |
 | **Database** | SQLite (dev) / PostgreSQL (prod via SQLModel + Alembic) |
 | **Deployment** | Reflex Cloud (frontend) + Fly.io (backend) |
 
@@ -60,29 +46,24 @@ An intelligent, AI-powered code review platform for students, developers, and ed
 ```
 CodeMentor-AI/
 ├── codementor/
-│   ├── components/
-│   │   ├── navbar.py           # Top navigation bar with links & GitHub icons
-│   │   ├── hero.py             # Landing page hero section
-│   │   ├── footer.py           # Footer with nav columns & social links
-│   │   ├── code_editor.py      # Monaco-style code input panel
-│   │   ├── ai_chat.py          # AI chat sidebar with scroll fix
-│   │   ├── results_panel.py    # Analysis results display
-│   │   └── theme.py            # Color palette & shared styles
-│   ├── pages/
-│   │   ├── index.py            # Home page
-│   │   ├── analyze.py          # Main code review page
-│   │   ├── history.py          # Review history page
-│   │   ├── about.py            # About page
-│   │   └── settings.py         # Settings page (AI model, theme)
+│   ├── components/             # navbar, sidebar, code_editor, ai_chat, bottom_panel, …
+│   ├── pages/                  # home, analyze, history, about, settings
 │   ├── services/
-│   │   ├── gemini_service.py   # 3-tier AI: Ollama → Groq → OpenAI
-│   │   ├── linting_service.py  # Pyflakes + Pycodestyle analysis
-│   │   ├── security_service.py # Bandit security scanning
-│   │   ├── complexity_service.py # Radon complexity metrics
-│   │   ├── cfg_service.py      # Control flow graph generation
-│   │   ├── rag_service.py      # ChromaDB + BM25 RAG pipeline
-│   │   └── github_service.py   # GitHub repo import & indexing
-│   └── state.py                # Unified Reflex application state
+│   │   ├── languages.py        # Language registry + detection (40+ languages)
+│   │   ├── analysis_pipeline.py# ONE pipeline for single files and repo scans
+│   │   ├── syntax_service.py   # tree-sitter: syntax errors, structure
+│   │   ├── linter_service.py   # errors + style for every language
+│   │   ├── complexity_service.py # radon / lizard / maintainability index
+│   │   ├── security_service.py # bandit + multi-language security rules
+│   │   ├── cfg_service.py      # control flow graphs (ast / tree-sitter / AI)
+│   │   ├── gemini_service.py   # AI providers, review, chat, repo overview
+│   │   ├── github_service.py   # URL parsing, zipball snapshot, single files
+│   │   ├── rag_service.py      # repo chunking + retrieval for chat
+│   │   ├── code_runner.py      # local toolchains → Piston → Judge0
+│   │   └── db_service.py       # history persistence
+│   └── state.py                # Reflex state (background events)
+├── tests/test_analysis.py      # pytest suite for the pipeline
+├── docs/SYSTEM_DESIGN.md       # architecture & design decisions
 ├── assets/
 │   ├── styles/custom.css       # Global CSS (chat scroll, animations)
 │   └── chat_scroll.js          # MutationObserver auto-scroll for chat
@@ -106,13 +87,15 @@ pip install -r requirements.txt
 
 # 3. Set up environment variables
 cp .env.example .env
-# Add your GROQ_API_KEY from https://console.groq.com (free)
+# Add any AI key (GROQ_API_KEY / GEMINI_API_KEY / OPENAI_API_KEY)
+# and API_URL=http://localhost:8000 for local development
 
 # 4. (Optional) Run Ollama for fully local AI
 ollama serve
 ollama pull qwen2.5-coder:7b
 
-# 5. Start the app
+# 5. Run the tests, then start the app
+python -m pytest -q tests/
 reflex run
 ```
 
@@ -122,21 +105,23 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `GROQ_API_KEY` | Recommended | Free cloud AI — get at [console.groq.com](https://console.groq.com) |
-| `OPENAI_API_KEY` | Optional | Paid fallback if Groq unavailable |
-| `DATABASE_URL` | Optional | PostgreSQL URL (SQLite used by default) |
+See [`.env.example`](.env.example) for the full list. Everything is optional; static analysis works with no keys.
+
+| Variable | Description |
+|---|---|
+| `GROQ_API_KEY` / `GEMINI_API_KEY` / `OPENAI_API_KEY` | AI providers (any one; several give automatic failover) |
+| `GITHUB_TOKEN` | GitHub rate limit 60 → 5,000 req/hr; enables private repos |
+| `PISTON_URL` / `JUDGE0_URL` (+`JUDGE0_KEY`) | Remote sandbox to execute languages not installed on the server |
+| `RUN_REMOTE_ONLY=1` | Never execute user code on the app server (recommended for public deployments) |
+| `DATABASE_URL` | PostgreSQL URL (SQLite by default) |
+| `API_URL` | Backend URL the frontend connects to (defaults to the Fly.io deployment) |
 
 ---
 
 ## AI Architecture
 
-The platform uses a **3-tier AI priority system**:
-
-1. **Ollama (local)** — Fastest, fully private. Requires `ollama serve` running locally.
-2. **Groq API (cloud)** — Free tier (14,400 req/day), LLaMA 3.1 8B Instant. Requires `GROQ_API_KEY`.
-3. **OpenAI (cloud)** — Paid fallback. Requires `OPENAI_API_KEY`.
+Providers are tried in order, and failures fall through automatically:
+**your session key → Ollama → Groq → Gemini → OpenAI.** Details are in [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md).
 
 ---
 

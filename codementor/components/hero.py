@@ -146,7 +146,7 @@ def hero() -> rx.Component:
                 # Status badge
                 rx.hstack(
                     _badge_dot("#3fb950"),
-                    rx.text("Powered by Ollama · qwen2.5-coder:7b · 100% Private",
+                    rx.text("Groq · Gemini · OpenAI · Ollama — 40+ languages",
                             font_size="12px", font_weight="500",
                             color=COLORS["text_secondary"]),
                     spacing="2",
@@ -185,7 +185,7 @@ def hero() -> rx.Component:
 
                 # Description
                 rx.text(
-                    "Paste your Python code and get instant bug detection, "
+                    "Paste code in any language and get instant bug detection, "
                     "PEP 8 style analysis, security scanning, complexity reports, "
                     "and AI-powered optimization — all running privately on your machine.",
                     font_size="16px",

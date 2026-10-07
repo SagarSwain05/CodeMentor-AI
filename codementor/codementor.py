@@ -7,6 +7,13 @@ import reflex as rx
 
 # Import all models so Reflex creates their tables
 from codementor.models import Snippet, ChatLog  # noqa: F401
+from codementor.services.db_service import ensure_tables
+from codementor.services.syntax_service import prefetch_grammars
+
+# Make sure history tables exist even on a brand-new database
+ensure_tables()
+# Warm the tree-sitter grammar cache in the background (no-op if unavailable)
+prefetch_grammars()
 
 from codementor.pages.home import home
 from codementor.pages.analyze import analyze
@@ -36,15 +43,15 @@ app = rx.App(
 app.add_page(
     home,
     route="/",
-    title="AI Code Reviewer — AI-Powered Code Reviewer",
-    description="Analyze Python code for errors, style issues, and get AI optimization suggestions.",
+    title="CodeMentor AI — AI-Powered Code Reviewer",
+    description="Review code in 40+ languages: errors, style, security, complexity, control flow and AI optimization.",
 )
 
 app.add_page(
     analyze,
     route="/analyze",
-    title="Analyze Code — AI Code Reviewer",
-    description="Paste or upload Python code for instant AI-powered analysis.",
+    title="Analyze Code — CodeMentor AI",
+    description="Paste, upload or import code in any language for instant AI-powered analysis.",
 )
 
 app.add_page(

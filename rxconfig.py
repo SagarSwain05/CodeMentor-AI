@@ -14,6 +14,7 @@ config = rx.Config(
     db_url=_db_url,
     tailwind=None,
     disable_plugins=["reflex.plugins.sitemap.SitemapPlugin"],
-    # Backend URL for Reflex Cloud deployment
-    api_url="https://be6df7dd-6c4d-4bb1-a59e-85c2dd171c63.fly.dev",
+    # Backend URL for the Reflex Cloud deployment. For local development set
+    # API_URL=http://localhost:8000 in .env so the frontend talks to your local backend.
+    api_url=os.environ.get("API_URL", "https://be6df7dd-6c4d-4bb1-a59e-85c2dd171c63.fly.dev"),
 )
